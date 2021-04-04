@@ -15,5 +15,8 @@
   "bugs": {
     "url": "https://github.com/yzITI/aliyun-serverless/issues"
   },
-  "homepage": "https://github.com/yzITI/aliyun-serverless#readme"
+  "homepage": "https://github.com/yzITI/aliyun-serverless#readme",
+  "dependencies": {
+    "axios": "^0.21.1"
+  }
 }
