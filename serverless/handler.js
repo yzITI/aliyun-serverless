@@ -23,11 +23,12 @@ async function run (hs, req) {
     const res = await h(req)
     if (res) return res
   }
+  return ['No Response', 500]
 }
 
 exports.handler = async function (req, resp) {
   const m = req.method, p = req.path
-  resp.setHeader('content-type', 'text/plain;charset=utf-8')
+  resp.setHeader('content-type', 'text/html;charset=utf-8')
   let hs = []
   for (const r of R[m]) {
     const ma = p.match(r.s)
