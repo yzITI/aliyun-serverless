@@ -1,4 +1,5 @@
 const TS = require('tablestore')
+const config = require('./config')
 let client = null
 
 exports.init = ({ credentials }, callback) => {
@@ -6,8 +7,7 @@ exports.init = ({ credentials }, callback) => {
     accessKeyId: credentials.accessKeyId,
     accessKeySecret: credentials.accessKeySecret,
     securityToken: credentials.securityToken,
-    endpoint: 'http://xyzsas-base.cn-shanghai.vpc.ots.aliyuncs.com',
-    instancename: 'base'
+    ...config.tablestore
   })
   callback(null, '')
 }
