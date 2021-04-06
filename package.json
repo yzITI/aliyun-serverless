@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/yzITI/aliyun-serverless#readme",
   "dependencies": {
-    "axios": "^0.21.1"
+    "axios": "^0.21.1",
+    "tablestore": "^5.0.7"
   }
 }

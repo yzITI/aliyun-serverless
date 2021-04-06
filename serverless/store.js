@@ -12,9 +12,15 @@ exports.init = ({ credentials }, callback) => {
   callback(null, '')
 }
 
-exports.model = (table, pk = 'id', version = 1) => {
+exports.store = (table, pks = ['id'], version = 1) => {
+  const pk = k => {
+    const res = [], ks = (k instanceof Array) ? k : [k]
+    for (let i = 0; i < ks.length; i++) res.push({ [pks[i]]: ks[i] })
+    return res
+  }
   const wrap = (k, row) => {
-    const res = { [pk]: k }
+    const res = {}, ks = (k instanceof Array) ? k : [k]
+    for (let i = 0; i < ks.length; i++) res[pks[i]] = ks[i]
     if (version === 1) res._timestamp = {}
     for (const a of row.attributes) {
       let v = a.columnValue
@@ -30,7 +36,7 @@ exports.model = (table, pk = 'id', version = 1) => {
     }
     return res
   }
-  const params = (k, cond) => ({ tableName: table, primaryKey: [{ [pk]: k }], condition: cond && new TS.Condition(TS.RowExistenceExpectation[cond], null) })
+  const params = (k, cond) => ({ tableName: table, primaryKey: pk(k), condition: cond && new TS.Condition(TS.RowExistenceExpectation[cond], null) })
   return {
     client: c => c ? client = c : client,
     async get (k, columns = []) {
@@ -47,14 +53,27 @@ exports.model = (table, pk = 'id', version = 1) => {
             tableName: table, columnsToGet: columns,
             maxVersions: version,
             direction: TS.Direction.FORWARD,
-            inclusiveStartPrimaryKey: [{ [pk]: next }],
-            exclusiveEndPrimaryKey: [{ [pk]: end }]
+            inclusiveStartPrimaryKey: pk(next),
+            exclusiveEndPrimaryKey: pk(end)
           })
           for (const r of data.rows) {
-            const k = r.primaryKey[0].value
-            res[k] = wrap(k, r)
+            const k = r.primaryKey.map(x => x.value)
+            res[k.join('')] = wrap(k, r)
           }
-          next = data.nextStartPrimaryKey ? data.nextStartPrimaryKey[0].value : false
+          next = data.nextStartPrimaryKey ? data.nextStartPrimaryKey.map(x => x.value) : false
+        }
+        return res
+      } catch { return false }
+    },
+    getBatch: async (ks) => {
+      try {
+        const res = {}
+        const _pks = ks.map(x => pk(x))
+        const data = await client.batchGetRow({ tables: [{ tableName: table, primaryKey: _pks }] })
+        for (const r of data.tables[0]) {
+          if (!r.primaryKey || !r.isOk) continue
+          const k = r.primaryKey.map(x => x.value)
+          res[k.join('')] = wrap(k, r)
         }
         return res
       } catch { return false }
@@ -68,11 +87,11 @@ exports.model = (table, pk = 'id', version = 1) => {
         return true
       } catch { return false }
     },
-    update: async (k, puts, deletes = {}, condition = 'IGNORE') => {
+    update: async (k, puts, dels = {}, condition = 'IGNORE') => {
       try {
         let pA = [], dA = []
         for (const p in puts) pA.push({ [p]: Number.isInteger(puts[p]) ? TS.Long.fromNumber(puts[p]) : puts[p] })
-        for (const d in deletes) dA.push(d)
+        for (const d in dels) dA.push(d)
         await client.updateRow({ ...params(k, condition), updateOfAttributeColumns: [{ 'PUT': pA }, {'DELETE_ALL': dA }] })
         return true
       } catch { return false }

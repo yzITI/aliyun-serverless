@@ -1,28 +1,59 @@
 const util = require('util')
 const getJsonBody = util.promisify(require('body/json'))
 
-module.exports = handlers => {
-  return (req, resp) => {
-    (async function () {
-      const m = req.method
-      resp.setHeader('content-type', 'text/plain;charset=utf-8')
-      if (!handlers[m]) return ['Method not allowed', 400]
-      try {
-        if (m === 'POST' || m === 'PUT') req.body = await getJsonBody(req)
-      } catch { return ['需要JSON格式的请求体', 400] }
-      for (const f of handlers[m]) {
-        res = await f(req)
-        if (res) return res
-      }
-    })().then(res => {
-      if (res[1]) resp.setStatusCode(res[1])
-      if (typeof res[0] === 'object') {
-        resp.setHeader('content-type', 'application/json;charset=utf-8')
-        resp.send(JSON.stringify(res[0]))
-      } else resp.send(String(res[0]))
-    }).catch(e => {
-      resp.setStatusCode(500)
-      resp.send('系统错误：' + e.toString())
-    })
+const R = { GET: [], POST: [], PUT: [], DELETE: [] }
+function add (m, r, ...hs) {
+  if (!hs.length) return
+  const k = ['_path']
+  let s = r.replace(/\/$/, '')
+  const t = s.split('/')
+  s = t.shift()
+  for (const x of t) {
+    if (x[0] == ':') {
+      k.push(x.substr(1))
+      s += '/(.*?)'
+    } else s += '/' + x
   }
+  R[m].push({ s: new RegExp(s + '$'), k, hs })
+}
+
+async function run (hs, req) {
+  if (!hs.length) return [`Cannot ${req.method} ${req.path}`, 400]
+  for (const h of hs) {
+    const res = await h(req)
+    if (res) return res
+  }
+}
+
+exports.handler = async function (req, resp) {
+  const m = req.method, p = req.path
+  resp.setHeader('content-type', 'text/plain;charset=utf-8')
+  let hs = []
+  for (const r of R[m]) {
+    const ma = p.match(r.s)
+    if (!ma) continue
+    hs = r.hs
+    req.params = {}
+    for (let i = 0; i < r.k.length; i++) req.params[r.k[i]] = ma[i]
+    break
+  }
+  req.body = await getJsonBody(req).catch(() => undefined)
+  try {
+    const res = await run(hs, req)
+    if (res[1]) resp.setStatusCode(res[1])
+    if (typeof res[0] === 'object') {
+      resp.setHeader('content-type', 'application/json;charset=utf-8')
+      resp.send(JSON.stringify(res[0]))
+    } else resp.send(String(res[0]))
+  } catch (e) {
+    resp.setStatusCode(500)
+    resp.send('系统错误：' + e.toString())
+  }
+}
+
+exports.A = {
+  get: (...p) => add('GET', ...p),
+  post: (...p) => add('POST', ...p),
+  put: (...p) => add('PUT', ...p),
+  delete: (...p) => add('DELETE', ...p),
 }
