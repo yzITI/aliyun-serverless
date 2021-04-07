@@ -5,9 +5,8 @@ const R = { GET: [], POST: [], PUT: [], DELETE: [] }
 function add (m, r, ...hs) {
   if (!hs.length) return
   const k = ['_path']
-  let s = r.replace(/\/$/, '')
-  const t = s.split('/')
-  s = t.shift()
+  const t = r.split('/')
+  let s = t.shift()
   for (const x of t) {
     if (x[0] == ':') {
       k.push(x.substr(1))
