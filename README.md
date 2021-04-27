@@ -62,7 +62,7 @@ req: {
 
 通过调用`S`函数您可以访问表格存储。数据模型生成如下：
 ```js
-model = S(tableName, pks = ['id'], version = 1)
+model = S(tableName, pks = ['id'], ver = 0)
 // for example
 m = S('user')
 ```
@@ -82,10 +82,10 @@ getRange: async (start, end, columns = [])
 getBatch: async (ks)
 
 // put a row
-put: async (k, attributes, condition = 'IGNORE')
+put: async (k, attributes, timestamps = {}, condition = 'IGNORE')
 
 // update a row
-update: async (k, puts, dels = {}, condition = 'IGNORE')
+update: async (k, puts, dels = {}, timestamps = {}, condition = 'IGNORE')
 
 // delete a row
 delete: async (k, condition = 'IGNORE')

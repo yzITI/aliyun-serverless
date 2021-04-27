@@ -10,7 +10,7 @@ function add (m, r, ...hs) {
   for (const x of t) {
     if (x[0] == ':') {
       k.push(x.substr(1))
-      s += '/(.*?)'
+      s += '/(.+?)'
     } else s += '/' + x
   }
   R[m].push({ s: new RegExp(s + '$'), k, hs })

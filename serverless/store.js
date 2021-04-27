@@ -2,17 +2,17 @@ const TS = require('tablestore')
 const config = require('./config')
 let client = null
 
-exports.init = ({ credentials }, callback) => {
+exports.init = ({ credentials }) => {
   client = new TS.Client({
     accessKeyId: credentials.accessKeyId,
     accessKeySecret: credentials.accessKeySecret,
     securityToken: credentials.securityToken,
     ...config.tablestore
   })
-  callback(null, '')
 }
 
-exports.store = (table, pks = ['id'], version = 1) => {
+exports.store = (table, pks = ['id'], ver = 0) => {
+  const version = ver || 1
   const pk = k => {
     const res = [], ks = (k instanceof Array) ? k : [k]
     for (let i = 0; i < ks.length; i++) res.push({ [pks[i]]: ks[i] })
@@ -21,14 +21,14 @@ exports.store = (table, pks = ['id'], version = 1) => {
   const wrap = (k, row) => {
     const res = {}, ks = (k instanceof Array) ? k : [k]
     for (let i = 0; i < ks.length; i++) res[pks[i]] = ks[i]
-    if (version === 1) res._timestamp = {}
+    if (ver === 1) res._timestamp = {}
     for (const a of row.attributes) {
       let v = a.columnValue
       if (typeof v === 'object') v = v.toNumber()
       const n = a.columnName, t = Number(a.timestamp)
       if (version === 1) {
         res[n] = v
-        res._timestamp[n] = t
+        if (ver) res._timestamp[n] = t
       } else {
         if (!res[n]) res[n] = {}
         res[n][t] = v
@@ -37,6 +37,16 @@ exports.store = (table, pks = ['id'], version = 1) => {
     return res
   }
   const params = (k, cond) => ({ tableName: table, primaryKey: pk(k), condition: cond && new TS.Condition(TS.RowExistenceExpectation[cond], null) })
+  const cols = (a, t) => {
+    const res = []
+    for (const k in a) {
+      let cc = {}
+      cc[k] = Number.isInteger(a[k]) ? TS.Long.fromNumber(a[k]) : a[k]
+      if (t[k]) cc.timestamp = t[k]
+      res.push(cc)
+    }
+    return res
+  }
   return {
     client: c => c ? client = c : client,
     async get (k, columns = []) {
@@ -78,21 +88,17 @@ exports.store = (table, pks = ['id'], version = 1) => {
         return res
       } catch { return false }
     },
-    put: async (k, attributes, condition = 'IGNORE') => {
+    put: async (k, attributes, timestamps = {}, condition = 'IGNORE') => {
       try {
-        const at = attributes
-        const columns = []
-        for (const a in at) columns.push({ [a]: Number.isInteger(at[a]) ? TS.Long.fromNumber(at[a]) : at[a] })
-        await client.putRow({ ...params(k, condition), attributeColumns: columns })
+        await client.putRow({ ...params(k, condition), attributeColumns: cols(attributes, timestamps) })
         return true
       } catch { return false }
     },
-    update: async (k, puts, dels = {}, condition = 'IGNORE') => {
+    update: async (k, puts, dels = {}, timestamps = {}, condition = 'IGNORE') => {
       try {
-        let pA = [], dA = []
-        for (const p in puts) pA.push({ [p]: Number.isInteger(puts[p]) ? TS.Long.fromNumber(puts[p]) : puts[p] })
+        const dA = []
         for (const d in dels) dA.push(d)
-        await client.updateRow({ ...params(k, condition), updateOfAttributeColumns: [{ 'PUT': pA }, {'DELETE_ALL': dA }] })
+        await client.updateRow({ ...params(k, condition), updateOfAttributeColumns: [{ 'PUT': cols(puts, timestamps) }, {'DELETE_ALL': dA }] })
         return true
       } catch { return false }
     },
