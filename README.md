@@ -10,8 +10,8 @@
 ```js
 const { A, C, E, S } = require('/opt')
 
-// E: export { initializer, handler }
-module.exports = E
+// E: return { initializer, handler }
+module.exports = E()
 
 // A: apply handlers
 A.get('/test/:name', (req) => {
