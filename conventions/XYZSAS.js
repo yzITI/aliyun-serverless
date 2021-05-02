@@ -33,7 +33,7 @@ const request = (m, url, headers = {}, body = {}) => new Promise((r, rej) => {
 module.exports = {
   RSA, request,
   async init () {
-    const res = await request('GET', 'https://api.aauth.link/app/xyzsas?secret=' + secret).then(x => JSON.parse(x)).catch(err => ({}))
+    const res = await request('GET', 'https://cn.api.aauth.link/app/xyzsas?secret=' + secret).then(x => JSON.parse(x)).catch(err => ({}))
     RSA.setKey(res)
   },
   random: (len = 32) => crypto.randomBytes(len).toString('base64').replace(/\//g, '_').replace(/\+/g, '-'),
