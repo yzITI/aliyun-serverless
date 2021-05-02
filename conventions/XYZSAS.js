@@ -11,8 +11,8 @@ const RSA = {
       sk: key.privateKey.export({ type: 'pkcs8', format: 'pem' })
     }
   },
-  encrypt: (sk, data) => crypto.privateEncrypt({ key: sk, padding: crypto.constants.RSA_PKCS1_PADDING }, Buffer.from(data)).toString('base64'),
-  decrypt: (pk, data) => crypto.publicDecrypt({ key: pk, padding: crypto.constants.RSA_PKCS1_PADDING }, Buffer.from(data, 'base64')).toString(),
+  encrypt: (sk, data) => crypto.privateEncrypt({ key: sk, padding: crypto.constants.RSA_PKCS1_PADDING }, Buffer.from(data)).toString('base64').replace(/\//g, '_').replace(/\+/g, '-'),
+  decrypt: (pk, data) => crypto.publicDecrypt({ key: pk, padding: crypto.constants.RSA_PKCS1_PADDING }, Buffer.from(data.replace(/\_/g, '/').replace(/\-/g, '+'), 'base64')).toString(),
   setKey (k) {
     RSAKey.pk = k.pk
     RSAKey.sk = k.sk
